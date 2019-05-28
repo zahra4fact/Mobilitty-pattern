@@ -1,0 +1,22 @@
+ourzone=pd.DataFrame();
+ourzone=UserData.groupby(
+    ['destination_id','dayOFweek','portion_of_day','Final_purpose']
+).agg(
+    {
+        
+        
+         # find the number of destination id
+        'Final_purpose': "count",
+      
+        
+        
+    }
+)
+
+#label zone
+folder="F:\ICT\Interdisiplinary project\Prj"
+Data= folder + '/' + 'ourzone.csv'
+ourzone=pd.DataFrame();
+ourzone=pd.read_csv(Data,sep=",")
+ourzone=ourzone.loc[ourzone.groupby(["destination_id", "dayOFweek","portion_of_day"])["Final_purpose.1"].idxmax()]
+ourzone.to_csv(r'F:\ICT\Interdisiplinary project\Prj\ourzone.csv')
