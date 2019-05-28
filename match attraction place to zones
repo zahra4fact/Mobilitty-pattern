@@ -1,0 +1,65 @@
+function check_Zone(point) {
+    var zone = db.zone.aggregate([
+        {
+            $project: {
+
+                geometry: 1,
+                "Comune": "$properties.PRO_COM",
+                "zone_id":{$subtract:["$properties.SEZ2011",12720000000]}
+         
+            }
+        },
+        {
+            $match: {
+
+                geometry: {
+                    $geoIntersects:
+                        {$geometry: point.loc}
+                }
+            }
+        }
+    ])
+
+    return zone;
+}
+
+
+function isEmpty(obj) {
+    for (var key in obj) {
+        if (obj.hasOwnProperty(key))
+            return false;
+    }
+    return true;
+}
+
+
+var points = db.weekend.find(
+    {}, {
+        id:1,
+        Name:1,
+        loc: 1
+    }
+)
+
+
+points.forEach(function (point) {
+    
+    try {
+
+        var zone = check_Zone(point)
+
+        
+        if (isEmpty(zone._batch)) {
+            zone._batch.push({"Comune": 0});
+        }
+        
+
+        db.match_weekend.insert({"Name":point.Name,"id":point.id,point: point.loc, "Province": zone._batch[0].Comune,"zone_Id":zone._batch[0].zone_id})
+    }
+    catch (err) {
+        print(err.name + ': "' + err.message + '" occurred');
+    }
+});
+	   
+        
+    
