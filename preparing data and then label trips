@@ -1,0 +1,114 @@
+import numpy as np
+import pandas as pd
+import datetime
+
+#reading data
+folder="F:\ICT\Interdisiplinary project\Prj"
+Data= folder + '/' + 'newDataofUser.csv'
+UserData=pd.read_csv(Data,sep=" ")
+UserData['origin_date'] = UserData['origin_date'].astype(str).str[:-3].astype(np.int64)
+UserData['destination_date'] = UserData['destination_date'].astype(str).str[:-3].astype(np.int64)
+
+#calculate duration of trips
+for i in range(0,len(UserData.index)-1):
+        UserData.loc[i,'trip_duration']=(UserData.loc[i,'destination_date']-UserData.loc[i,'origin_date']).astype(int)
+UserData['trip_duration']=abs(UserData['trip_duration'])
+
+#calculate duration that someone stay in one zone
+for i in range(0,len(UserData.index)-1):
+    if (UserData.loc[i,'destination_id']==UserData.loc[i+1,'origin_id']):
+        UserData.loc[i,'duration']=(UserData.loc[i,'destination_date']-UserData.loc[i+1,'origin_date']).astype(int)
+UserData['duration']=abs(UserData['duration'])
+
+for i in range(0,len(UserData.index)-1):
+    UserData.loc[i,'duration_allTrips']=(UserData.loc[i,'destination_date']-UserData.loc[i+1,'origin_date']).astype(int)
+UserData['duration_allTrips']=abs(UserData['duration_allTrips'])
+
+#deteremine transtit trips(less than 30 minitues means trip is transit)
+UserData['transit']='final trip'
+UserData.loc[
+    UserData['duration'] <= 1800,
+    ('transit')
+] = (1)
+for i in range(0,len(UserData.index)-1):
+    if (UserData.loc[i,'transit']==1):
+         UserData.loc[i,'transit']='transit'
+
+#read attraction place coordinates and put in dataframe fisrt all attraction place 
+folder="F:\ICT\Interdisiplinary project\Prj"
+po= folder + '/' + 'poi.csv'
+point=pd.read_csv(po,sep=",")
+
+#match POI(attraction place) to each destination coordinates with first input of them
+for i in range(0,UserData.shape[0]):   
+    point['distance']=np.sqrt(((UserData.loc[i,'longitud_dest']-point['longitude'])**2)+((UserData.loc[i,'latitud_dest']-point['latitude'])**2))    
+    c=point['distance'].idxmin()
+    UserData.loc[i,'purpose']=point.loc[c,'PointId']
+    
+#read attraction place coordinates and put in dataframe fisrt  attraction place except university and job    
+folder="F:\ICT\Interdisiplinary project\Prj"
+po= folder + '/' + 'POI_weekend.csv'
+point2=pd.read_csv(po,sep=",")
+
+#match POI(attraction place) to each destination coordinates with second input of them
+for i in range(0,UserData.shape[0]):
+    point2['distance']=np.sqrt(((UserData.loc[i,'longitud_dest']-point2['longitude'])**2)+((UserData.loc[i,'latitud_dest']-point2['latitude'])**2))      
+    c2=point2['distance'].idxmin()
+    UserData.loc[i,'purpose2']=point2.loc[c2,'PointId']
+    
+#convert time stamp to date
+UserData['origin_date']=pd.to_datetime(UserData['origin_date'], unit='s')
+UserData['destination_date']=pd.to_datetime(UserData['destination_date'], unit='s')
+
+#seprate time and date
+UserData['dest_date']=UserData['destination_date'].dt.date
+UserData['dest_time']=UserData['destination_date'].dt.time
+
+#determine each day of week
+UserData['dayOFweek']=UserData['destination_date'].dt.weekday_name
+
+#final label of trips with purpose
+for i in range(0,UserData.shape[0]):
+    a=UserData.loc[i,'dayOFweek']
+    b=UserData.loc[i,'dest_time'].hour
+    if (a is 'Saturday' or a is 'Sunday'):
+        UserData.loc[i,'Final_purpose']=UserData.loc[i,'purpose2']
+    elif (a is 'Friday' and b>=19 ): 
+        UserData.loc[i,'Final_purpose']=UserData.loc[i,'purpose2']  
+    else:
+        UserData.loc[i,'Final_purpose']=UserData.loc[i,'purpose'] 
+ 
+#seprate dayweek from weekend       
+for i in range(0,UserData.shape[0]):
+    a=UserData.loc[i,'dayOFweek']
+    b=UserData.loc[i,'destination_date'].hour
+    if (a is 'Saturday' or a is 'Sunday'):
+        UserData.loc[i,'Final_purpose']=UserData.loc[i,'purpose2']
+        UserData.loc[i,'dayOFweek']='weekend' 
+    elif (a is 'Friday' and b>=19 ): 
+        UserData.loc[i,'Final_purpose']=UserData.loc[i,'purpose2']  
+        UserData.loc[i,'dayOFweek']='weekend' 
+    else:
+        UserData.loc[i,'Final_purpose']=UserData.loc[i,'purpose'] 
+        UserData.loc[i,'dayOFweek']='weekday' 
+        
+#seprate trips that are transit or they are out of our choosen area and home purpose     
+for i in range(0,UserData.shape[0]):
+    if(UserData.loc[i,'destination_id']==0):
+         UserData.loc[i,'Final_purpose']=UserData.loc[i,'purpose']+'(Suburb)'
+    if (UserData.loc[i,'transit']=='transit'):
+        UserData.loc[i,'Final_purpose']='Transit'          
+    a=UserData.loc[i,'destination_date'].hour
+    if(a>=22 or a<=5):
+        UserData.loc[i,'Final_purpose']='Home'  
+
+#seprate day to daytime (8 till 19) or morn & nigth(19 till 8)
+UserData[['Final_purpose','nextp']]=UserData['Final_purpose'].str.split('_', n=1, expand=True)
+for i in range(0,len(UserData.index)-1):
+    x= UserData.loc[i,'dest_time'].hour
+    if (x>=8 and x<=19):
+        UserData.loc[i,'portion_of_day']='daytime'
+    else:
+        UserData.loc[i,'portion_of_day']='morn & nigth'  
+        
+        
