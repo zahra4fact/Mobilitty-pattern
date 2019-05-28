@@ -1,0 +1,31 @@
+var result=db.users.aggregate([
+{
+    $project:
+    {
+    _id:0,
+    user_Id:"$properties.UserId",
+    orig_Id:"$properties.origin_zone.census_zone_id",
+    date_orig:"$properties.origin_zone.date",
+    longitud_orig:{$arrayElemAt: [ "$properties.origin_zone.loc.coordinates", 0]},
+    latitude_orig:{$arrayElemAt: [ "$properties.origin_zone.loc.coordinates", 1]},
+    dest_Id:"$properties.destination_zone.census_zone_id",
+    date_dest:"$properties.destination_zone.date",
+    longitud_dest:{$arrayElemAt: [ "$properties.destination_zone.loc.coordinates", 0]},
+    latitude_dest:{$arrayElemAt: [ "$properties.destination_zone.loc.coordinates", 1]}
+    
+    },
+    
+}])
+  
+
+while (result.hasNext())
+{
+
+    o = result.next()
+    //var date1=NumberLong(o.date_orig).valueOf().toString()
+    //print(date1)
+   // date_orig=new Date(o.date_orig*1000)
+    //var date_dest=new Date(o.date_dest*1000)
+    print (o["user_Id"],o["orig_Id"],o["date_orig"],o["longitud_orig"],o["latitude_orig"],o["dest_Id"],o["date_dest"],o["longitud_dest"],o["latitude_dest"])
+
+}
